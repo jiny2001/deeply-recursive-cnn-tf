@@ -4,10 +4,10 @@
 This project is a test implementation of ["Deeply-Recursive Convolutional Network for Image Super-Resolution", CVPR2016](http://www.cv-foundation.org/openaccess/content_cvpr_2016/papers/Kim_Deeply-Recursive_Convolutional_Network_CVPR_2016_paper.pdf) using tensorflow
 
 
-Paper: "Deeply-Recursive Convolutional Network for Image Super-Resolution"
-by Jiwon Kim, Jung Kwon Lee and Kyoung Mu Lee Department of ECE, ASRI, Seoul National University, Korea
+Paper: ["Deeply-Recursive Convolutional Network for Image Super-Resolution"] (https://arxiv.org/abs/1511.04491) by Jiwon Kim, Jung Kwon Lee and Kyoung Mu Lee Department of ECE, ASRI, Seoul National University, Korea
 
-Training highly recursive CNN is so hard. However this paper makes it with some tricks like sharing filter weights or using intermediate outputs to suppress divergence in training.
+
+Training highly deep CNNlayers is so hard. However this paper makes it with some tricks like sharing filter weights and using intermediate outputs to suppress divergence in training. The model in the papaer contains 20 CNN layers without no any max-pooling layers, I feel it's amazing.
 
 Also the paper’s super-resolution results are so nice. :)
 
