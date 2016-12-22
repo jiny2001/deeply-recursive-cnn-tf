@@ -22,35 +22,13 @@ import super_resolution_utilty as util
 
 class DataSet:
 
-  def __init__(self, cache_dir, filenames, scale=1, width=0, height=0, max_value=255.0, channels=1, alignment=0):
+  def __init__(self, cache_dir, filenames, scale=1, max_value=255.0, channels=1, alignment=0):
     
-    self.scale = int(scale)
-    self.alignment = int(alignment)
     self.count = len(filenames)
     self.image = self.count * [None]
-        
+
     for i in xrange(self.count):
-      filename, extension = os.path.splitext(filenames[i])
-      if self.scale != 1.0:
-        filename += "_%1.0f" % self.scale
-      if channels == 1.0:
-        filename += "_Y"
-      
-      if cache_dir is not None and cache_dir is not "":
-        cache_filename = cache_dir + "/" + filename + extension
-        try:
-          image = util.load_image(cache_filename, width=width, height=height, channels=channels, alignment=self.alignment)
-        except util.LoadError:
-          image = util.load_image(filenames[i])
-          image = util.build_image(image, width, height, scale=self.scale, alignment=self.alignment)
-        util.save_image(cache_filename, image)
-      else:
-        image = util.load_image(filenames[i])
-        image = util.build_image(image, width, height, scale=self.scale, alignment=self.alignment)
-
-      if max_value != 255.0:
-        image = np.multiply(image, max_value / 255.0)
-
+      image = util.load_input_image_with_cache(cache_dir, filenames[i], channels=channels, alignment=alignment, scale=scale )
       self.image[i] = image
 
   def convert_to_batch_images(self, window_size, stride):
@@ -95,6 +73,7 @@ class SuperResolution:
     self.lr_decay = flags.lr_decay
     self.lr_decay_epoch = flags.lr_decay_epoch
     self.beta1 = flags.beta1
+    self.beta2 = flags.beta2
     self.momentum = flags.momentum
     self.feature_num = flags.feature_num
     self.cnn_size = flags.cnn_size
@@ -184,7 +163,7 @@ class SuperResolution:
 
     # H0 conv
     self.W0_conv = util.diagonal_cnn_weight([self.cnn_size, self.cnn_size, self.feature_num, self.feature_num],
-                                             stddev=self.weight_dev/2.0, name="W0_conv")
+                                             stddev=self.weight_dev, name="W0_conv")
     self.B0_conv = util.bias([self.feature_num], name="B0_conv")
     self.H_conv[0] = util.conv2d_with_bias_and_relu(Hm1_conv, self.W0_conv, self.cnn_stride, self.B0_conv, name="H0")
 
@@ -193,17 +172,17 @@ class SuperResolution:
       Wm1_transposed = tf.transpose(self.Wm1_conv, [3, 0, 1, 2])
       tf.image_summary("W-1" + self.model_name, Wm1_transposed, max_images=self.log_weight_image_num)
       util.add_summaries("B-1:" + self.model_name, self.Bm1_conv)
-      util.add_summaries("W-1:" + self.model_name, self.Wm1_conv)
+      util.add_summaries("W-1:" + self.model_name, self.Wm1_conv, mean=True, max=True,min=True)
 
       util.add_summaries("B0:" + self.model_name, self.B0_conv)
-      util.add_summaries("W0:" + self.model_name, self.W0_conv)
+      util.add_summaries("W0:" + self.model_name, self.W0_conv, mean=True, max=True,min=True)
 
   def build_inference_graph(self):
     
     if self.inference_depth <= 0:   # for testing
       return
     
-    self.W_conv = util.diagonal_cnn_weight([self.cnn_size, self.cnn_size, self.feature_num, self.feature_num], name="W_conv")
+    self.W_conv = util.diagonal_cnn_weight([self.cnn_size, self.cnn_size, self.feature_num, self.feature_num], stddev=self.weight_dev, name="W_conv")
     self.B_conv = util.bias([self.feature_num])
     self.H_conv[1] = util.conv2d_with_bias_and_relu(self.H_conv[0], self.W_conv, 1, self.B_conv, name="H1")
 
@@ -301,7 +280,7 @@ class SuperResolution:
     elif self.optimizer == "adagrad":
       train_step = tf.train.AdagradOptimizer(lr_input).minimize(loss)
     elif self.optimizer == "adam":
-      train_step = tf.train.AdamOptimizer(lr_input, beta1=self.beta1).minimize(loss)
+      train_step = tf.train.AdamOptimizer(lr_input, beta1=self.beta1, beta2=self.beta2).minimize(loss)
     elif self.optimizer == "momentum":
       train_step = tf.train.MomentumOptimizer(lr_input, self.momentum).minimize(loss)
     elif self.optimizer == "rmsprop":
@@ -325,16 +304,6 @@ class SuperResolution:
       print("Model restored.")
 
     self.start_time = time.time()
-
-  def do(self, input_image):
-    
-    if len(input_image.shape) == 2:
-      input_image = input_image.reshape(input_image.shape[0], input_image.shape[1], 1)
-
-    image = np.multiply(input_image, self.max_value / 255.0)
-    image = image.reshape(1, image.shape[0], image.shape[1], image.shape[2])
-    y = self.sess.run(self.y_, feed_dict={self.x: image})
-    return np.multiply(y[0], 255.0 / self.max_value)
 
   def run_train_step(self):
     
@@ -370,7 +339,7 @@ class SuperResolution:
     if max_value == 0:
       max_value = self.max_value
       
-    if mse == float('Inf'):
+    if mse is None or mse == float('Inf') or mse == 0:
       psnr = 0
     else:
       psnr = 20 * math.log(max_value / math.sqrt(mse), 10)
@@ -395,52 +364,57 @@ class SuperResolution:
     filename = self.checkpoint_dir + "/" + self.model_name + ".ckpt"
     self.saver.save(self.sess, filename)
     print("Model saved [%s]." % filename)
-    
+
+  def do(self, input_image):
+  
+    if len(input_image.shape) == 2:
+      input_image = input_image.reshape(input_image.shape[0], input_image.shape[1], 1)
+  
+    image = np.multiply(input_image, self.max_value / 255.0)
+    image = image.reshape(1, image.shape[0], image.shape[1], image.shape[2])
+    y = self.sess.run(self.y_, feed_dict={self.x: image})
+    return np.multiply(y[0], 255.0 / self.max_value)
+  
   def do_super_resolution(self, file_path, output_folder):
     
     filename, extension = os.path.splitext(file_path)
     org_image = util.load_image(file_path)
+    input_image = util.resize_image_by_bicubic(org_image, self.scale)
     util.save_image("output/" + file_path, org_image)
     
-    if len(org_image.shape) >= 3 or org_image.shape[2] == 3 and self.channels == 1:
+    if len(input_image.shape) >= 3 or input_image.shape[2] == 3 and self.channels == 1:
       # use y_image for rgb_image
-      ycbcr_image = util.convert_rgb_to_ycbcr(org_image)
-      input_image = ycbcr_image[:, :, 0:1].copy()
-      output_image = self.do(input_image)
-      image = util.convert_y_and_cbcr_to_rgb(output_image, ycbcr_image)
+      input_ycbcr_image = util.convert_rgb_to_ycbcr(input_image, jpeg_mode=False)
+      input_y_image = input_ycbcr_image[:, :, 0:1].copy()
+      output_y_image = self.do(input_y_image)
+      image = util.convert_y_and_cbcr_to_rgb(output_y_image, input_ycbcr_image, jpeg_mode=False)
     else:
-      # for monochro or rgb image
       image = self.do(org_image)
       
     util.save_image("output/" + filename + "_Result" + extension, image)
     return 0
 
-  def do_super_resolution_for_test(self, file_path, output_folder, scale):
+  def do_super_resolution_for_test(self, file_path, output_folder):
 
     filename, extension = os.path.splitext(file_path)
-    true_image = util.load_image(file_path)
+    true_image = util.set_image_alignment(util.load_image(file_path), self.scale)
     util.save_image("output/" + file_path, true_image)
 
-    if len(true_image.shape) == 3 and true_image.shape[2] == 1:
-      true_image = true_image.reshape(true_image.shape[0], true_image.shape[1])
-    input_image = misc.imresize(true_image, 1.0 / scale, interp='bicubic')
-    input_image = misc.imresize(input_image, scale / 1.0, interp='nearest')
+    input_image = util.load_input_image(file_path, channels=self.channels, alignment=self.scale, scale=self.scale,
+                             convert_ycbcr=True, jpeg_mode=False, max_value=self.max_value)
     util.save_image("output/" + filename + "_input" + extension, input_image)
     
-    if len(input_image.shape) >= 3 and input_image.shape[2] == 3 and self.channels == 1:
-      # use y_image for rgb_image
-      ycbcr_image = util.convert_rgb_to_ycbcr(input_image)
-      input_image = ycbcr_image[:, :, 0:1].copy()
+    if len(true_image.shape) >= 3 and true_image.shape[2] == 3 and self.channels == 1:
+      true_image = util.convert_rgb_to_y(true_image, jpeg_mode=False)
+      util.save_image("output/" + filename + "_y" + extension, true_image)
       output_image = self.do(input_image)
-      image = util.convert_y_and_cbcr_to_rgb(output_image, ycbcr_image)
-      true_y_image = util.convert_rgb_to_y(true_image)
-      mse = util.compute_mse(true_y_image, output_image)
     else:
       # for monochro or rgb image
-      image = self.do(input_image)
-      mse = util.compute_mse(true_image, image)
+      output_image = self.do(input_image)
 
-    util.save_image("output/" + filename + "_Result" + extension, image)
+    mse = util.compute_mse(true_image, output_image, border_size=self.scale)
+
+    util.save_image("output/" + filename + "_result" + extension, output_image)
     print "MSE:%f PSNR:%f" % (mse, self.get_psnr(mse))
     return mse
 

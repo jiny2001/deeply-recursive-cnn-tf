@@ -7,7 +7,7 @@ This project is a test implementation of ["Deeply-Recursive Convolutional Networ
 Paper: ["Deeply-Recursive Convolutional Network for Image Super-Resolution"] (https://arxiv.org/abs/1511.04491) by Jiwon Kim, Jung Kwon Lee and Kyoung Mu Lee Department of ECE, ASRI, Seoul National University, Korea
 
 
-Training highly deep CNNlayers is so hard. However this paper makes it with some tricks like sharing filter weights and using intermediate outputs to suppress divergence in training. The model in the papaer contains 20 CNN layers without no any max-pooling layers, I feel it's amazing.
+Training highly deep CNN layers is so hard. However this paper makes it with some tricks like sharing filter weights and using intermediate outputs to suppress divergence in training. The model in the papaer contains 20 CNN layers without no any max-pooling layers, I feel it's amazing.
 
 Also the paper’s super-resolution results are so nice. :)
 
@@ -45,7 +45,7 @@ will be uploaded soon. So far I got a little less PSNR compared to their paper y
 
 ## datasets
 
-Some images are already set in **data** folder yet some x3 and x4 images are not because of their data sizes.
+Some images are already set in **data** folder yet some x3 and x4 images are not contained because of their data sizes.
 
 for training:
 + ScSR [[ Yang et al. TIP 2010 ]](http://www.ifp.illinois.edu/%7Ejyang29/ScSR.htm)

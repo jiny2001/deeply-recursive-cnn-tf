@@ -10,10 +10,7 @@ Test implementation using TensorFlow library.
 
 Author: Jin Yamanaka
 Many thanks for: Masayuki Tanaka and Shigesumi Kuwashima
-Project: https://github.com/
-
-note:
-github repository now doesn't contain x3 or x4 data et for Urban100 and BSD100
+Project: https://github.com/jiny2001/deeply-recursive-cnn-tf
 """
 
 import tensorflow as tf
@@ -28,14 +25,15 @@ flags.DEFINE_float("initial_lr", 0.0005, "Initial learning rate")
 flags.DEFINE_float("lr_decay", 0.2, "Learning rate decay rate when it does not reduced during specific epoch")
 flags.DEFINE_integer("lr_decay_epoch", 5, "Decay learning rate when loss does not decrease")
 flags.DEFINE_float("beta1", 0.1, "Beta1 form adam optimizer")
+flags.DEFINE_float("beta2", 0.1, "Beta2 form adam optimizer")
 flags.DEFINE_float("momentum", 0.9, "Momentum for momentum optimizer and rmsprop optimizer")
-flags.DEFINE_integer("feature_num", 256, "Number of CNN Filters")
+flags.DEFINE_integer("feature_num", 64, "Number of CNN Filters")
 flags.DEFINE_integer("cnn_size", 3, "Size of CNN filters")
 flags.DEFINE_integer("inference_depth", 16, "Number of recurrent CNN filters")
 flags.DEFINE_integer("batch_num", 64, "Number of mini-batch images for training")
 flags.DEFINE_integer("batch_size", 41, "Image size for mini-batch")
 flags.DEFINE_integer("stride_size", 21, "Stride size for mini-batch")
-flags.DEFINE_string("optimizer", "adam", "Optimizer: can be [gd, adadelta, adagrad, adam, momentum, rmsprop]")
+flags.DEFINE_string("optimizer", "adam", "Optimizer: can be [gd, momentum, adadelta, adagrad, adam, rmsprop]")
 flags.DEFINE_float("loss_alpha", 0.5, "Initial loss-alpha value. Don't use intermediate outputs when 0.")
 flags.DEFINE_integer("loss_alpha_zero_epoch", 100, "Decrease loss-alpha to zero by this epoch")
 flags.DEFINE_float("loss_beta", 100, "Loss-beta for r️educing the divergence of parameter values")
@@ -53,7 +51,7 @@ flags.DEFINE_integer("evaluate_step", 10, "steps for evaluation")
 flags.DEFINE_integer("save_step", 500, "steps for saving learned model")
 flags.DEFINE_float("end_lr", 1e-5, "Training end learning rate")
 flags.DEFINE_string("checkpoint_dir", "model", "Directory for checkpoints")
-flags.DEFINE_string("cache_dir", "", "Directory for caching image data. If specified, build image cache")
+flags.DEFINE_string("cache_dir", "cache", "Directory for caching image data. If specified, build image cache")
 flags.DEFINE_string("data_dir", "data", "Directory for test/train images")
 flags.DEFINE_boolean("load_model", False, "Load saved model before start")
 
@@ -97,7 +95,7 @@ def main(_):
   
   psnr = 0
   for filename in test_filenames:
-    mse = model.do_super_resolution_for_test(filename, FLAGS.output_dir, FLAGS.scale)
+    mse = model.do_super_resolution_for_test(filename, FLAGS.output_dir)
     psnr += model.get_psnr(mse)
 
   print "\n%s Final PSNR:%f" % (util.get_now_date(), psnr / len(test_filenames))

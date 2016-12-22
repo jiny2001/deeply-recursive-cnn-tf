@@ -19,6 +19,8 @@ import tensorflow as tf
 import numpy as np
 from scipy import misc
 import scipy.stats as stats
+from PIL import Image
+
 
 # utilities for save / load
 
@@ -75,9 +77,6 @@ def clean_dir(path):
 
 
 def save_image(filename, image):
-  
-  if len(image.shape) == 4:
-    image = image[0]
 
   if len(image.shape) >= 3 and image.shape[2] == 1:
     image = image.reshape(image.shape[0], image.shape[1])
@@ -87,59 +86,99 @@ def save_image(filename, image):
     os.makedirs(directory)
     
   misc.imsave(filename, image)
+
   print 'Saved [%s]' % filename
 
 
-def convert_rgb_to_y(image):
+def save_image_data(filename, image):
+
+    directory = os.path.dirname(filename)
+    if directory != "" and not os.path.exists(directory):
+        os.makedirs(directory)
+
+    np.save(filename, image)
+    print 'Saved [%s]' % filename
+
+    if len(image.shape) ==3 and image.shape[2] == 1:
+      image2 = image.reshape(image.shape[0], image.shape[1])
+    misc.imsave(filename, image2)
+
+
+def convert_rgb_to_y(image, jpeg_mode=True, max_value=255):
+
   if len(image.shape) <= 2 or image.shape[2] == 1:
     return image
   
   y_image = np.zeros([image.shape[0], image.shape[1], 1])
-  for i in xrange(image.shape[0]):
-    for j in xrange(image.shape[1]):
-      y_image[i, j, 0] = 0.299 * image[i, j, 0] + 0.587 * image[i, j, 1] + 0.114 * image[i, j, 2]
+  if jpeg_mode:
+    for i in xrange(image.shape[0]):
+      for j in xrange(image.shape[1]):
+        y_image[i, j, 0] = 0.299 * image[i, j, 0] + 0.587 * image[i, j, 1] + 0.114 * image[i, j, 2]
+  else:
+    for i in xrange(image.shape[0]):
+      for j in xrange(image.shape[1]):
+        y_image[i, j, 0] = (16.0 * max_value + 65.481 * image[i, j, 0] + 128.553 * image[i, j, 1] + 24.966 * image[i, j, 2] ) / 256.0
 
   return y_image
 
-def convert_rgb_to_ycbcr(image, max_value=255):
+
+def convert_rgb_to_ycbcr(image, jpeg_mode=True, max_value=255):
   
   if len(image.shape) < 2 or image.shape[2] == 1:
     return image
   
   ycbcr_image = np.zeros([image.shape[0], image.shape[1], image.shape[2]])
-  for i in xrange(image.shape[0]):
-    for j in xrange(image.shape[1]):
-      ycbcr_image[i, j, 0] = 0.299 * image[i, j, 0] + 0.587 * image[i, j, 1] + 0.114 * image[i, j, 2]
-      ycbcr_image[i, j, 1] = -0.169 * image[i, j, 0] - 0.331 * image[i, j, 1] + 0.500 * image[i, j, 2] + max_value / 2
-      ycbcr_image[i, j, 2] = 0.500 * image[i, j, 0] - 0.419 * image[i, j, 1] - 0.081 * image[i, j, 2] + max_value / 2
+  if jpeg_mode:
+    for i in xrange(image.shape[0]):
+      for j in xrange(image.shape[1]):
+        ycbcr_image[i, j, 0] = 0.299 * image[i, j, 0] + 0.587 * image[i, j, 1] + 0.114 * image[i, j, 2]
+        ycbcr_image[i, j, 1] = -0.169 * image[i, j, 0] - 0.331 * image[i, j, 1] + 0.500 * image[i, j, 2] + max_value / 2
+        ycbcr_image[i, j, 2] = 0.500 * image[i, j, 0] - 0.419 * image[i, j, 1] - 0.081 * image[i, j, 2] + max_value / 2
+  else:
+    for i in xrange(image.shape[0]):
+      for j in xrange(image.shape[1]):
+        ycbcr_image[i, j, 0] = ( 16.0 * max_value + 65.481 * image[i, j, 0] + 128.553 * image[i, j, 1] + 24.966 * image[i, j, 2] ) / 256.0
+        ycbcr_image[i, j, 1] = (128.0 * max_value - 37.945 * image[i, j, 0] - 74.494 * image[i, j, 1] + 112.439 * image[i, j, 2] ) / 256.0
+        ycbcr_image[i, j, 2] = (128.0 * max_value + 112.439 * image[i, j, 0] - 94.154 * image[i, j, 1] - 18.285 * image[i, j, 2] ) / 256.0
   
   return ycbcr_image
 
 
-def convert_y_and_cbcr_to_rgb(y_image, cbcr_image, max_value=255.0):
+def convert_y_and_cbcr_to_rgb(y_image, cbcr_image, jpeg_mode=True, max_value=255.0):
+  
+  if len(y_image.shape) <= 2:
+    y_image = y_image.reshape[y_image.shape[0], y_image.shape[1], 1]
 
-  center = max_value/2
-  rgb_image = np.zeros([y_image.shape[0], y_image.shape[1], 3])
+  if len(y_image.shape) == 3 and y_image.shape[2] == 3:
+    y_image = y_image[:,:,0:1]
 
-  for i in xrange(y_image.shape[0]):
-    for j in xrange(y_image.shape[1]):
-      rgb_image[i, j, 0] = min(max_value, max(0, y_image[i, j, 0] + 1.402 * (cbcr_image[i, j, 2]-center)))
-      rgb_image[i, j, 1] = min(max_value, max(0, y_image[i, j, 0] - 0.344 * (cbcr_image[i, j, 1]-center) - 0.714 * (cbcr_image[i, j, 2]-center)))
-      rgb_image[i, j, 2] = min(max_value, max(0, y_image[i, j, 0] + 1.772 * (cbcr_image[i, j, 1]-center)))
+  ycbcr_image = np.zeros([y_image.shape[0], y_image.shape[1], 3])
+  ycbcr_image[:, :, 0] = y_image[:, :, 0]
+  ycbcr_image[:, :, 1:3] = cbcr_image[:, :, 0:2]
 
-  return rgb_image
+  return convert_ycbcr_to_rgb(ycbcr_image, jpeg_mode=jpeg_mode, max_value=max_value)
 
 
-def convert_ycbcr_to_rgb(ycbcr_image, max_value=255.0):
+def convert_ycbcr_to_rgb(ycbcr_image, jpeg_mode=True, max_value=255.0):
 
-  center = max_value/2
   rgb_image = np.zeros([ycbcr_image.shape[0], ycbcr_image.shape[1], 3])
-
-  for i in xrange(ycbcr_image.shape[0]):
-    for j in xrange(ycbcr_image.shape[1]):
-      rgb_image[i, j, 0] = min(max_value, max(0, ycbcr_image[i, j, 0] + 1.402 * (ycbcr_image[i, j, 2]-center)))
-      rgb_image[i, j, 1] = min(max_value, max(0, ycbcr_image[i, j, 0] - 0.344 * (ycbcr_image[i, j, 1]-center) - 0.714 * (ycbcr_image[i, j, 2]-center)))
-      rgb_image[i, j, 2] = min(max_value, max(0, ycbcr_image[i, j, 0] + 1.772 * (ycbcr_image[i, j, 1]-center)))
+  center = max_value / 2
+  if jpeg_mode:
+    for i in xrange(ycbcr_image.shape[0]):
+      for j in xrange(ycbcr_image.shape[1]):
+        rgb_image[i, j, 0] = ycbcr_image[i, j, 0] + 1.402 * (ycbcr_image[i, j, 2] - center)
+        rgb_image[i, j, 1] = ycbcr_image[i, j, 0] - 0.344 * (ycbcr_image[i, j, 1] - center) - 0.714 * (
+        ycbcr_image[i, j, 2] - center)
+        rgb_image[i, j, 2] = ycbcr_image[i, j, 0] + 1.772 * (ycbcr_image[i, j, 1] - center)
+  else:
+    for i in xrange(ycbcr_image.shape[0]):
+      for j in xrange(ycbcr_image.shape[1]):
+        y = ycbcr_image[i, j, 0] - 16 * max_value / 256
+        cb = ycbcr_image[i, j, 1] - center
+        cr = ycbcr_image[i, j, 2] - center
+        rgb_image[i, j, 0] = (y / 219.0 + 0.701 * cr / 112) * max_value
+        rgb_image[i, j, 1] = (y / 219.0 - 0.886 * 0.114 / (112 * 0.587) * cb - 0.701 * 0.299 / (112 * 0.587) * cr) * max_value
+        rgb_image[i, j, 2] = (y / 219.0 + 0.886 / 112.0 * cb) * max_value
 
   return rgb_image
 
@@ -153,6 +192,48 @@ def set_image_alignment(image, alignment):
   if image.shape[1] != width or image.shape[0] != height:
     return image[:height, :width, :]
   
+  return image
+
+
+def resize_image_by_bicubic(image, scale):
+  
+  size = [int(image.shape[0] * scale), int(image.shape[1] * scale)]
+  image = image.reshape(1, image.shape[0], image.shape[1], image.shape[2])
+  tf_image = tf.image.resize_bicubic(image, size=size)
+  image = tf_image.eval()
+  return image.reshape(image.shape[1], image.shape[2], image.shape[3])
+
+def resize_image_by_scipy_bicubic(image, scale):
+
+  if len(image.shape)==3 and image.shape[2] == 1:
+    image = image.reshape(image.shape[0], image.shape[1])
+    image = misc.imresize(image, float(scale), interp="bicubic")
+    return image.reshape(image.shape[0], image.shape[1], 1)
+  else:
+    return misc.imresize(image, float(scale), interp="bicubic")
+
+def resize_image_by_nnr(image, scale):
+
+  if len(image.shape)==3 and image.shape[2] == 1:
+    image = image.reshape(image.shape[0], image.shape[1])
+    image = misc.imresize(image, float(scale), interp="nearest")
+    return image.reshape(image.shape[0], image.shape[1], 1)
+  else:
+    return misc.imresize(image, float(scale), interp="nearest")
+
+
+def resize_image_by_pil_bicubic(image, scale):
+  
+  width, height = image.shape[1], image.shape[0]
+  if len(image.shape)==3 and image.shape[2] == 3:
+    image = Image.fromarray(image,"RGB")
+    image = image.resize([int(height*scale), int(width*scale)], resample=Image.BICUBIC)
+    image = np.asarray(image)
+  else:
+    image = Image.fromarray(image.reshape(height, width))
+    image = image.resize([int(height * scale), int(width * scale)], resample=Image.BICUBIC)
+    image = np.asarray(image)
+    image = image.reshape(image.shape[0], image.shape[1], 1)
   return image
 
 
@@ -175,26 +256,72 @@ def load_image(filename, width=0, height=0, channels=0, alignment=0):
   return image
 
 
-def build_image(image, width, height, channels=1, convert_ycbcr=True, scale=1, alignment=0):
+def load_image_data(filename, width=0, height=0, channels=0, alignment=0):
 
-  if alignment != 0:
-    image = set_image_alignment(image, alignment)
-  if scale != 1:
-    image = misc.imresize(image, 1.0 / scale, interp="bicubic")
-    image = misc.imresize(image, scale / 1.0, interp="nearest")
+    if not os.path.isfile(filename+".npy"):
+        raise LoadError("File not found")
+    image = np.load(filename+".npy")
+
+    if (width != 0 and image.shape[1] != width) or (height != 0 and image.shape[0] != height):
+        raise LoadError("Attributes mismatch")
+    if channels != 0 and image.shape[2] != channels:
+        raise LoadError("Attributes mismatch")
+    if alignment != 0 and ((width % alignment) != 0 or (height % alignment) != 0):
+        raise LoadError("Attributes mismatch")
+
+    print "Cache Loaded [%s]: %d x %d x %d" % (filename, image.shape[1], image.shape[0], image.shape[2])
+    return image
+
+
+def load_input_image_with_cache(cache_dir, org_filename, channels=1, alignment=0, scale=1,
+                     convert_ycbcr=True, jpeg_mode=False, max_value=255.0):
+
+  if cache_dir is None or cache_dir is "":
+    return load_input_image(org_filename, channels=channels, alignment=alignment, scale=scale)
+
+  filename, extension = os.path.splitext(org_filename)
+  if scale != 1.0:
+    filename += "_%1.0f" % scale
+  if channels == 1:
+    filename += "_Y"
+
+  cache_filename = cache_dir + "/" + filename + extension
+  try:
+    image = load_image_data(cache_filename, channels=channels)
+  except LoadError:
+    image = load_input_image(org_filename, channels=channels, alignment=scale, scale=scale,
+                             convert_ycbcr=convert_ycbcr, jpeg_mode=False, max_value=max_value)
+    save_image_data(cache_filename, image)
+
+  return image
+
+
+def load_input_image(filename, width = 0, height = 0, channels=1, alignment=0, scale=1,
+                     convert_ycbcr=True, jpeg_mode=False, max_value=255.0):
+
+  image = load_image(filename)
 
   if width != 0 and height != 0:
     if image.shape[0] != height or image.shape[1] != width:
       x = (image.shape[1] - width) // 2
       y = (image.shape[0] - height) // 2
       image = image[y: y + height, x: x + width, :]
-      print "cropped to (%d,%d)-(%d,%d)" % (x, y, width, height)
+
+  if alignment > 1:
+    image = set_image_alignment(image, alignment)
+
+  if scale != 1:
+    image = resize_image_by_bicubic(image, 1.0 / scale)
+    image = resize_image_by_bicubic(image, scale)
     
   if convert_ycbcr:
-    image = convert_rgb_to_ycbcr(image)
+    image = convert_rgb_to_ycbcr(image, jpeg_mode=jpeg_mode)
   
   if channels == 1 and image.shape[2] > 1:
     image = image[:, :, 0:1].copy()   # use copy() since after the step we use stride_tricks.as_strided().
+
+  if max_value != 255.0:
+      image = np.multiply(image, max_value / 255.0)
 
   return image
 
@@ -247,7 +374,7 @@ def weight(shape, stddev=0.01, name=None):
 
 def diagonal_cnn_weight(shape, stddev=0.0, name=None):
   
-  if stddev == 0:
+  if stddev == 0.0:
     initial = np.zeros(shape, dtype=float)
   else:
     initial = np.random.normal(0, stddev, shape)
@@ -304,7 +431,7 @@ def get_now_date():
   return '%s/%s/%s %s:%s:%s' % (d.year, d.month, d.day, d.hour, d.minute, d.second)
 
 
-def compute_mse(image1, image2, border_size = 1):
+def compute_mse(image1, image2, border_size = 0):
   
   if len(image1.shape)==2:
     image1 = image1.reshape(image1.shape[0], image1.shape[1], 1)
