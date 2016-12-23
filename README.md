@@ -12,6 +12,16 @@ Training highly deep CNN layers is so hard. However this paper makes it with som
 Also the paper’s super-resolution results are so nice. :)
 
 
+## model structure
+
+Those figures are from the paper. There are 3 different networks which cooperates to make images fine.
+![alt tag](https://github.com/jiny2001/deeply-recursive-cnn-tf/documents/figure1.png)
+![alt tag](https://github.com/jiny2001/deeply-recursive-cnn-tf/documents/figure3.png)
+
+This model below is made by my code and drawn by tensorboard.
+![alt tag](https://github.com/jiny2001/deeply-recursive-cnn-tf/documents/model.png)
+
+
 ## requirements
 
 tensorflow, scipy, numpy and pillow
@@ -39,9 +49,10 @@ Network graphs and weights / loss summaries are saved in **tf_log** directory.
 
 Weights are saved in **model** directory.
 
+
 ## sample result
 
-will be uploaded soon. So far I got a little less PSNR compared to their paper yet there are some interesting results.
+will be uploaded soon. So far I got a less PSNR compared to their paper yet there are some interesting results.
 
 ## datasets
 
