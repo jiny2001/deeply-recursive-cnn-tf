@@ -55,7 +55,16 @@ Weights are saved in **model** directory.
 
 ## sample result
 
-will be uploaded soon. So far I got a less PSNR compared to their paper yet there are some interesting results.
+So far I got a less PSNR compared to their paper yet there are some interesting results. Those images are from paper's sample result.
+
+
+Input (nearest neighbor)  | Bicubic 
+--- | --- 
+![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/img_013_SRF_2_nearest.png) | ![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/img_013_SRF_2_bicubic.png) 
+
+Output(SRCNN) | Ground truth
+--- | ---
+![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/img_013_SRF_2_SRCNN.png) | ![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/img_013_SRF_2_HR.png)
 
 ## datasets
 
