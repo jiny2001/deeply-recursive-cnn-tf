@@ -15,11 +15,14 @@ Also the paper’s super-resolution results are so nice. :)
 ## model structure
 
 Those figures are from the paper. There are 3 different networks which cooperates to make images fine.
-![alt tag](https://github.com/jiny2001/deeply-recursive-cnn-tf/documents/figure1.png)
-![alt tag](https://github.com/jiny2001/deeply-recursive-cnn-tf/documents/figure3.png)
+
+![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/figure1.png)
+
+![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/figure3.png)
 
 This model below is made by my code and drawn by tensorboard.
-![alt tag](https://github.com/jiny2001/deeply-recursive-cnn-tf/documents/model.png)
+
+![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/model.png)
 
 
 ## requirements
