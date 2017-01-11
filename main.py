@@ -21,28 +21,30 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 # Model
-flags.DEFINE_float("initial_lr", 0.0005, "Initial learning rate")
-flags.DEFINE_float("lr_decay", 0.2, "Learning rate decay rate when it does not reduced during specific epoch")
+flags.DEFINE_float("initial_lr", 0.001, "Initial learning rate")
+flags.DEFINE_float("lr_decay", 0.3, "Learning rate decay rate when it does not reduced during specific epoch")
 flags.DEFINE_integer("lr_decay_epoch", 5, "Decay learning rate when loss does not decrease")
 flags.DEFINE_float("beta1", 0.1, "Beta1 form adam optimizer")
 flags.DEFINE_float("beta2", 0.1, "Beta2 form adam optimizer")
 flags.DEFINE_float("momentum", 0.9, "Momentum for momentum optimizer and rmsprop optimizer")
-flags.DEFINE_integer("feature_num", 64, "Number of CNN Filters")
+flags.DEFINE_integer("feature_num", 256, "Number of CNN Filters")
 flags.DEFINE_integer("cnn_size", 3, "Size of CNN filters")
-flags.DEFINE_integer("inference_depth", 16, "Number of recurrent CNN filters")
+flags.DEFINE_integer("inference_depth", 12, "Number of recurrent CNN filters")
 flags.DEFINE_integer("batch_num", 64, "Number of mini-batch images for training")
 flags.DEFINE_integer("batch_size", 41, "Image size for mini-batch")
 flags.DEFINE_integer("stride_size", 21, "Stride size for mini-batch")
 flags.DEFINE_string("optimizer", "adam", "Optimizer: can be [gd, momentum, adadelta, adagrad, adam, rmsprop]")
 flags.DEFINE_float("loss_alpha", 0.5, "Initial loss-alpha value. Don't use intermediate outputs when 0.")
-flags.DEFINE_integer("loss_alpha_zero_epoch", 100, "Decrease loss-alpha to zero by this epoch")
-flags.DEFINE_float("loss_beta", 100, "Loss-beta for r️educing the divergence of parameter values")
+flags.DEFINE_integer("loss_alpha_zero_epoch", 80, "Decrease loss-alpha to zero by this epoch")
+flags.DEFINE_float("loss_beta", 0.1, "Loss-beta for weight decay")
 flags.DEFINE_float("weight_dev", 0.01, "Initial weight stddev")
+flags.DEFINE_string("initializer", "diagonal", "Initializer: can be [uniform, stddev, diagonal, xavier]")
 
 # Image Processing
 flags.DEFINE_integer("scale", 2, "Scale for Super Resolution (can be 2 or 4)")
 flags.DEFINE_float("max_value", 255.0, "For normalize image pixel value")
 flags.DEFINE_integer("channels", 1, "Using num of image channels. Use YCbCr when channels=1.")
+flags.DEFINE_boolean("jpeg_mode", False, "Using Jpeg mode for converting from rgb to ycbcr")
 
 # Training or Others
 flags.DEFINE_boolean("is_training", True, "Train model with 91 standard images")
@@ -54,6 +56,7 @@ flags.DEFINE_string("checkpoint_dir", "model", "Directory for checkpoints")
 flags.DEFINE_string("cache_dir", "cache", "Directory for caching image data. If specified, build image cache")
 flags.DEFINE_string("data_dir", "data", "Directory for test/train images")
 flags.DEFINE_boolean("load_model", False, "Load saved model before start")
+flags.DEFINE_string("model_name", "", "model name for save files and tensorboard log")
 
 # Debugging or Logging
 flags.DEFINE_string("output_dir", "output", "Directory for output test images")
@@ -61,6 +64,7 @@ flags.DEFINE_string("log_dir", "tf_log", "Directory for tensorboard log")
 flags.DEFINE_boolean("debug", False, "Display each calculated MSE and weight variables")
 flags.DEFINE_boolean("initialise_log", True, "Clear all tensorboard log before start")
 flags.DEFINE_boolean("visualize", True, "Save loss and graph data")
+flags.DEFINE_boolean("summary", True, "Save weight and bias")
 
 
 def main(_):
@@ -68,7 +72,10 @@ def main(_):
   print "Super Resolution (tensorflow version:%s)" % tf.__version__
   print "%s\n" % util.get_now_date()
 
-  model_name = "model_F%d_D%d_LR%f" % (FLAGS.feature_num, FLAGS.inference_depth, FLAGS.initial_lr)
+  if FLAGS.model_name is "":
+    model_name = "model_F%d_D%d_LR%f" % (FLAGS.feature_num, FLAGS.inference_depth, FLAGS.initial_lr)
+  else:
+    model_name = "model_%s" % FLAGS.model_name
   model = sr.SuperResolution(FLAGS, model_name=model_name)
 
   test_filenames = util.build_test_filenames(FLAGS.data_dir, FLAGS.dataset, FLAGS.scale)
@@ -79,8 +86,7 @@ def main(_):
       training_filenames =  util.get_files_in_directory(FLAGS.data_dir + "/ScSR/")
 
     print "Loading and building cache images..."
-    model.load_datasets(FLAGS.cache_dir, training_filenames, test_filenames, FLAGS.batch_size, FLAGS.stride_size,
-                          FLAGS.scale)
+    model.load_datasets(FLAGS.cache_dir, training_filenames, test_filenames, FLAGS.batch_size, FLAGS.stride_size)
   else:
     FLAGS.load_model = True
 
@@ -96,7 +102,7 @@ def main(_):
   psnr = 0
   for filename in test_filenames:
     mse = model.do_super_resolution_for_test(filename, FLAGS.output_dir)
-    psnr += model.get_psnr(mse)
+    psnr += util.get_psnr(mse)
 
   print "\n%s Final PSNR:%f" % (util.get_now_date(), psnr / len(test_filenames))
   
@@ -108,7 +114,7 @@ def train(training_filenames, test_filenames, model):
   
     step += 1
     model.build_training_batch()
-    model.run_train_step()
+    model.train_batch()
       
     if step % FLAGS.evaluate_step == 0:
       mse = model.evaluate(step)

@@ -11,6 +11,7 @@ Author: Jin Yamanaka
 from __future__ import division
 import shutil
 import datetime
+import math
 import os
 from os import listdir
 from os.path import isfile, join
@@ -84,7 +85,8 @@ def save_image(filename, image):
   directory = os.path.dirname(filename)
   if directory != "" and not os.path.exists(directory):
     os.makedirs(directory)
-    
+
+  image = misc.toimage(image, cmin=0, cmax=255) #to avoid range rescaling
   misc.imsave(filename, image)
 
   print 'Saved [%s]' % filename
@@ -203,6 +205,7 @@ def resize_image_by_bicubic(image, scale):
   image = tf_image.eval()
   return image.reshape(image.shape[1], image.shape[2], image.shape[3])
 
+
 def resize_image_by_scipy_bicubic(image, scale):
 
   if len(image.shape)==3 and image.shape[2] == 1:
@@ -211,6 +214,7 @@ def resize_image_by_scipy_bicubic(image, scale):
     return image.reshape(image.shape[0], image.shape[1], 1)
   else:
     return misc.imresize(image, float(scale), interp="bicubic")
+
 
 def resize_image_by_nnr(image, scale):
 
@@ -258,7 +262,7 @@ def load_image(filename, width=0, height=0, channels=0, alignment=0):
 
 def load_image_data(filename, width=0, height=0, channels=0, alignment=0):
 
-    if not os.path.isfile(filename+".npy"):
+    if not os.path.isfile(filename + ".npy"):
         raise LoadError("File not found")
     image = np.load(filename+".npy")
 
@@ -273,31 +277,8 @@ def load_image_data(filename, width=0, height=0, channels=0, alignment=0):
     return image
 
 
-def load_input_image_with_cache(cache_dir, org_filename, channels=1, alignment=0, scale=1,
-                     convert_ycbcr=True, jpeg_mode=False, max_value=255.0):
-
-  if cache_dir is None or cache_dir is "":
-    return load_input_image(org_filename, channels=channels, alignment=alignment, scale=scale)
-
-  filename, extension = os.path.splitext(org_filename)
-  if scale != 1.0:
-    filename += "_%1.0f" % scale
-  if channels == 1:
-    filename += "_Y"
-
-  cache_filename = cache_dir + "/" + filename + extension
-  try:
-    image = load_image_data(cache_filename, channels=channels)
-  except LoadError:
-    image = load_input_image(org_filename, channels=channels, alignment=scale, scale=scale,
-                             convert_ycbcr=convert_ycbcr, jpeg_mode=False, max_value=max_value)
-    save_image_data(cache_filename, image)
-
-  return image
-
-
-def load_input_image(filename, width = 0, height = 0, channels=1, alignment=0, scale=1,
-                     convert_ycbcr=True, jpeg_mode=False, max_value=255.0):
+def load_input_image(filename, width = 0, height = 0, channels=1, scale=1, alignment=0,
+                     convert_ycbcr=True, jpeg_mode=False):
 
   image = load_image(filename)
 
@@ -311,17 +292,38 @@ def load_input_image(filename, width = 0, height = 0, channels=1, alignment=0, s
     image = set_image_alignment(image, alignment)
 
   if scale != 1:
-    image = resize_image_by_bicubic(image, 1.0 / scale)
-    image = resize_image_by_bicubic(image, scale)
-    
+    image = resize_image_by_scipy_bicubic(image, 1.0 / scale)
+    image = resize_image_by_scipy_bicubic(image, scale)
+
   if convert_ycbcr:
     image = convert_rgb_to_ycbcr(image, jpeg_mode=jpeg_mode)
   
   if channels == 1 and image.shape[2] > 1:
     image = image[:, :, 0:1].copy()   # use copy() since after the step we use stride_tricks.as_strided().
 
-  if max_value != 255.0:
-      image = np.multiply(image, max_value / 255.0)
+  return image
+
+
+def load_input_image_with_cache(cache_dir, org_filename, channels=1, scale=1, alignment=0,
+                     convert_ycbcr=True, jpeg_mode=False, max_value=255.0):
+
+  if cache_dir is None or cache_dir is "":
+    return load_input_image(org_filename, channels=channels, scale=scale, alignment=alignment,
+                            convert_ycbcr=convert_ycbcr, jpeg_mode=jpeg_mode, max_value=max_value)
+
+  filename, extension = os.path.splitext(org_filename)
+  if scale != 1.0:
+    filename += "_%1.0f" % scale
+  if channels == 1:
+    filename += "_Y"
+
+  cache_filename = cache_dir + "/" + filename + extension
+  try:
+    image = load_image(cache_filename, channels=channels)
+  except LoadError:
+    image = load_input_image(org_filename, channels=channels, scale=scale, alignment=alignment,
+                             convert_ycbcr=convert_ycbcr, jpeg_mode=jpeg_mode)
+    save_image(cache_filename, image)
 
   return image
 
@@ -363,42 +365,66 @@ def conv2d_with_bias_and_relu(x, w, stride, bias, name=""):
   return tf.nn.relu( tf.add(conv, bias, name=name+"_add"), name=name + "_relu")
 
 
-def weight(shape, stddev=0.01, name=None):
-  
-  initial = tf.truncated_normal(shape, dtype=tf.float32, stddev=stddev)
-  if name is None:
-    return tf.Variable(initial)
+def xavier_cnn_initializer(shape, uniform=True, name=None):
+
+  fan_in = shape[0] * shape[1] * shape[2]
+  fan_out = shape[0] * shape[1] * shape[3]
+  n = fan_in + fan_out
+  if uniform:
+    init_range = math.sqrt(6.0 / n)
+    return tf.random_uniform(shape, minval=-init_range, maxval=init_range, name=name)
   else:
-    return tf.Variable(initial, name=name)
+    stddev = math.sqrt(3.0 / n)
+    return tf.truncated_normal(shape=shape, stddev=stddev, name = name)
 
 
-def diagonal_cnn_weight(shape, stddev=0.0, name=None):
-  
-  if stddev == 0.0:
-    initial = np.zeros(shape, dtype=float)
-  else:
-    initial = np.random.normal(0, stddev, shape)
-    initial = stats.threshold(initial, threshmin=-2 * stddev, threshmax=2 * stddev)
+def he_initializer(shape, name=None):
 
+  n = shape[0] * shape[1] * shape[2]
+  stddev = math.sqrt(2.0 / n)
+  return tf.truncated_normal(shape=shape, stddev=stddev, name = name)
+
+def weight(shape, stddev=0.01, name=None, uniform=False, initializer="xavier"):
+
+  if initializer == "xavier":
+    initial = xavier_cnn_initializer(shape, uniform=uniform, name=name)
+  elif initializer == "he":
+      initial = he_initializer(shape, name=name)
+  elif initializer == "uniform":
+    initial = tf.random_uniform(shape, minval=-2.0 * stddev, maxval=2.0 * stddev)
+  elif initializer == "stddev":
+   initial = tf.truncated_normal(shape=shape, stddev=stddev)
+  elif initializer == "diagonal":
+    initial = he_initializer(shape)
+    if len(shape) == 4:
+      initial = initial.eval()
+      i = shape[0] // 2
+      j = shape[1] // 2
+      for k in xrange(min(shape[2], shape[3])):
+        initial[i][j][k][k] = 1.0
+      initial = tf.Variable(initial, name=name)
+
+  return initial
+
+def diagonal_weight(shape, name=None):
+
+  initial = np.zeros(shape, dtype=np.float32)
   if len(shape) == 4:
     i = shape[0] // 2
     j = shape[1] // 2
     for k in xrange(min(shape[2], shape[3])):
       initial[i][j][k][k] = 1.0
+  initial = tf.Variable(initial, name=name)
 
-  initial = tf.cast(initial, tf.float32)
-  if name is None:
-    return tf.Variable(initial)
-  else:
-    return tf.Variable(initial, name=name)
+  return initial
 
 
 def bias(shape, initial_value=0.0, name=None):
 
   if name is None:
-    initial = tf.constant(initial_value, dtype=tf.float32, shape=shape)
+    initial = tf.constant(initial_value, shape=shape)
   else:
-    initial = tf.constant(initial_value, dtype=tf.float32, shape=shape, name=name)
+    initial = tf.constant(initial_value, shape=shape, name=name)
   return tf.Variable(initial)
 
 
@@ -457,7 +483,7 @@ def compute_mse(image1, image2, border_size = 0):
 
 
 def print_CNN_weight(tensor):
-  
+
   print "Tensor[%s] shape=%s" % (tensor.name, str(tensor.get_shape()))
   weight = tensor.eval()
   for i in xrange(weight.shape[3]):
@@ -501,6 +527,15 @@ def build_test_filenames(data_folder, dataset, scale):
     test_filenames += get_test_filenames(data_folder, dataset, scale)
 
   return test_filenames
+
+
+def get_psnr(mse, max_value=255.0):
+
+  if mse is None or mse == float('Inf') or mse == 0:
+    psnr = 0
+  else:
+    psnr = 20 * math.log(max_value / math.sqrt(mse), 10)
+  return psnr
 
 
 # utility for extracting target files from datasets
