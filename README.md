@@ -33,15 +33,15 @@ tensorflow, scipy, numpy and pillow
 ## how to use
 
 ```
-# training with default parameters and evaluate with Set5 (takes whole day to train with high-GPU)
+# train with default parameters and evaluate after training for Set5 (takes whole day to train with high-GPU)
 python main.py
 
-# training with simple model (will be nice for CPU computation)
-python main.py —initial_lr 0.001 —end_lr 1e-4 —feature_num 32 —inference_depth 5
+# training with simple model (will be good without GPU)
+python main.py —-end_lr 1e-4 —-feature_num 32 -—inference_depth 5
 
 # evaluation for set14 only (after training has done)
 # [set5, set14, bsd100, urban100, all] are available
-python main.py —dataset set14
+python main.py -—dataset set14 --is_training False
 
 # train for x4 scale images
 # (you need to download image_SRF_4 dataset for Urban100 and BSD100)
@@ -83,7 +83,7 @@ for evaluation:
 
 ## disclaimer
 
-Some details are not shown in the paper and my guesses are not enough, so some parts, especially for initial values, may be not good in some cases.
+Some details are not shown in the paper and my guesses maybe not enough. My code's PSNR are about 0.5-1.0 lesser than paper's experiments.
 
 ## acknowledgments
 
