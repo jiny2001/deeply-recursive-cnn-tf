@@ -113,10 +113,11 @@ def train(training_filenames, test_filenames, model):
   while model.lr > FLAGS.end_lr:
   
     step += 1
+    logging = step % FLAGS.evaluate_step == 0
     model.build_training_batch()
-    model.train_batch()
-      
-    if step % FLAGS.evaluate_step == 0:
+    model.train_batch(step, log_mse=logging)
+
+    if logging:
       mse = model.evaluate(step)
       model.print_status(step, mse)
 

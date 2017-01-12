@@ -141,7 +141,10 @@ class SuperResolution:
     self.index_in_epoch = 0
     
   def build_training_batch(self):
-    
+
+    self.trained = 0
+    self.training_psnr =0
+
     if self.index_in_epoch < 0:
       self.batch_index = random.sample(range(0, self.train.input.count), self.train.input.count)
       self.index_in_epoch = 0
@@ -172,9 +175,9 @@ class SuperResolution:
     self.H_conv[0] = util.conv2d_with_bias_and_relu(Hm1_conv, self.W0_conv, self.cnn_stride, self.B0_conv, name="H0")
 
     if self.summary:
-      # convert to tf.image_summary format [batch_num, height, width, channels]
+      # convert to tf.summary.image format [batch_num, height, width, channels]
       Wm1_transposed = tf.transpose(self.Wm1_conv, [3, 0, 1, 2])
-      tf.image_summary("W-1" + self.model_name, Wm1_transposed, max_images=self.log_weight_image_num)
+      tf.summary.image("W-1" + self.model_name, Wm1_transposed, max_outputs=self.log_weight_image_num)
       util.add_summaries("B-1:" + self.model_name, self.Bm1_conv, mean=True, max=True, min=True)
       util.add_summaries("W-1:" + self.model_name, self.Wm1_conv, mean=True, max=True, min=True)
 
@@ -259,8 +262,8 @@ class SuperResolution:
       loss1 = tf.mul(1.0 / self.inference_depth, loss1, name="Loss1_weight")
       loss2 = mse
       if self.visualize:
-        tf.scalar_summary("L1:" + self.model_name, loss1)
-        tf.scalar_summary("L2:" + self.model_name, loss2)
+        tf.summary.scalar("L1:" + self.model_name, loss1)
+        tf.summary.scalar("L2:" + self.model_name, loss2)
       loss1 = tf.mul(self.loss_alpha_input, loss1, name="Loss1_alpha")
       loss2 = tf.mul(1 - self.loss_alpha_input, loss2, name="Loss2_alpha")
 
@@ -272,13 +275,13 @@ class SuperResolution:
           loss3 *= self.loss_beta
 
         if self.visualize:
-          tf.scalar_summary("L3:" + self.model_name, loss3)
+          tf.summary.scalar("L3:" + self.model_name, loss3)
         loss = loss1 + loss2 + loss3
       else:
         loss = loss1 + loss2
 
     if self.visualize:
-      tf.scalar_summary("Loss:" + self.model_name, loss)
+      tf.summary.scalar("Loss:" + self.model_name, loss)
 
     self.loss = loss
     self.mse = mse
@@ -307,8 +310,8 @@ class SuperResolution:
   def init_all_variables(self, load_initial_data=False):
     
     if self.visualize:
-      self.summary_op = tf.merge_all_summaries()
-      self.summary_writer = tf.train.SummaryWriter(self.log_dir, graph=self.sess.graph)
+      self.summary_op = tf.summary.merge_all()
+      self.summary_writer = tf.summary.FileWriter(self.log_dir, graph=self.sess.graph)
 
     self.sess.run(tf.global_variables_initializer())
     self.saver = tf.train.Saver()
@@ -319,12 +322,15 @@ class SuperResolution:
 
     self.start_time = time.time()
 
-  def train_batch(self):
+  def train_batch(self, step=0, log_mse=False):
 
-    self.sess.run([self.train_step, self.mse], feed_dict={self.x: self.batch_input_images,
+    _, mse = self.sess.run([self.train_step, self.mse], feed_dict={self.x: self.batch_input_images,
                                               self.y: self.batch_true_images,
                                               self.lr_input: self.lr,
                                               self.loss_alpha_input: self.loss_alpha})
+    self.trained += 1
+    self.training_psnr += util.get_psnr(mse, max_value=self.max_value)
+
 
   def evaluate(self, step):
     
@@ -362,7 +368,12 @@ class SuperResolution:
     
     processing_time = (time.time() - self.start_time) / step
 
-    print "%s Step:%d MSE:%f PSNR:%f" % (util.get_now_date(), step, mse, util.get_psnr(mse, max_value=self.max_value))
+    if self.trained > 0:
+      training_psnr = self.training_psnr / self.trained
+    else:
+      training_psnr =0
+
+    print "%s Step:%d MSE:%f PSNR:%f (%f)" % (util.get_now_date(), step, mse, util.get_psnr(mse, max_value=self.max_value), training_psnr)
     print "Epoch:%d LR:%f α:%f (%2.2fsec/step)" % (self.epochs_completed, self.lr, self.loss_alpha, processing_time)
 
   def print_weight_variables(self):

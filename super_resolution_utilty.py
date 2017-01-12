@@ -436,19 +436,19 @@ def add_summaries(name, var, stddev=True, mean=False, max=False, min=False):
 
     mean_var = tf.reduce_mean(var)
     if mean:
-      tf.scalar_summary('mean/' + name, mean_var)
+      tf.summary.scalar('mean/' + name, mean_var)
 
     if stddev:
       with tf.name_scope('stddev'):
         stddev_var = tf.sqrt(tf.reduce_sum(tf.square(var - mean_var)))
-        tf.scalar_summary('stddev/' + name, stddev_var)
+        tf.summary.scalar('stddev/' + name, stddev_var)
 
     if max:
-      tf.scalar_summary('max/' + name, tf.reduce_max(var))
+      tf.summary.scalar('max/' + name, tf.reduce_max(var))
     
     if min:
-      tf.scalar_summary('min/' + name, tf.reduce_min(var))
-    tf.histogram_summary(name, var)
+      tf.summary.scalar('min/' + name, tf.reduce_min(var))
+    tf.summary.histogram(name, var)
 
 
 def get_now_date():
