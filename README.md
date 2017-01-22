@@ -53,18 +53,22 @@ Network graphs and weights / loss summaries are saved in **tf_log** directory.
 Weights are saved in **model** directory.
 
 
-## sample result
+## result of my implementation
 
-So far I got a less PSNR compared to their paper yet there are some interesting results. Those images are from paper's sample result.
+I use half num of features (128) to make training faster.
+And I got a less PSNR compared to their paper. 
 
+![alt tag](https://qiita-image-store.s3.amazonaws.com/0/145675/563c0d01-bc49-0843-7fbe-b13d4a39927a.png) 
 
-Input (nearest neighbor)  | Bicubic 
---- | --- 
-![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/img_013_SRF_2_nearest.png) | ![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/img_013_SRF_2_bicubic.png) 
+![alt tag](https://qiita-image-store.s3.amazonaws.com/0/145675/73c7538e-9171-7926-00ba-1c4835c675be.png)
 
-Output(SRCNN) | Ground truth
---- | ---
-![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/img_013_SRF_2_SRCNN.png) | ![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/img_013_SRF_2_HR.png)
+| DataSet | Bicubic | SRCN | SelfEx | My Result | DRCN |
+|:-------:|:-------:|:----:|:----:|:----:|:----:|
+|Set5 x2|33.66|36.66|36.49|36.92|37.63|
+|Set14 x2|30.24|32.42|32.22|32.47|33.04|
+|BSD100 x2|29.56|31.36|31.18|31.47|31.85|
+|Urban100 x2|26.88|29.50|29.54|29.31|30.75|
+
 
 ## datasets
 
