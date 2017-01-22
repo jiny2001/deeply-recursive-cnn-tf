@@ -19,7 +19,6 @@ from os.path import isfile, join
 import tensorflow as tf
 import numpy as np
 from scipy import misc
-import scipy.stats as stats
 from PIL import Image
 
 

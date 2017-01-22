@@ -9,14 +9,12 @@ Author: Jin Yamanaka
 """
 
 from __future__ import division
-import math
 import time
 import random
 import os
 
 import tensorflow as tf
 import numpy as np
-from scipy import misc
 import super_resolution_utilty as util
 
 
@@ -36,12 +34,14 @@ class DataSet:
     
     batch_images = self.count * [None]
     batch_images_count = 0
-   
+
     for i in xrange(self.count):
-      image = np.multiply(self.image[i], max_value / 255.0)
+      image = self.image[i]
+      if max_value != 255.0:
+        image = np.multiply(self.image[i], max_value / 255.0)
       batch_images[i] = util.get_split_images(image, window_size, stride=stride)
       batch_images_count += batch_images[i].shape[0]
-      
+
     images = batch_images_count * [None]
     no = 0
     for i in xrange(self.count):
@@ -108,7 +108,9 @@ class SuperResolution:
     self.log_weight_image_num = 16
 
     # initializing variables
-    self.sess = tf.InteractiveSession()
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = False
+    self.sess = tf.InteractiveSession(config=config)
     self.H_conv = (self.inference_depth + 1) * [None]
     self.batch_input_images = self.batch_num * [None]
     self.batch_true_images = self.batch_num * [None]
@@ -122,7 +124,7 @@ class SuperResolution:
     util.make_dir(self.checkpoint_dir)
     if flags.initialise_log:
       util.clean_dir(self.log_dir)
-      
+
     print "Features:%d Inference Depth:%d Initial LR:%0.5f [%s]" % \
           (self.feature_num, self.inference_depth, self.lr, self.model_name)
 
@@ -133,7 +135,7 @@ class SuperResolution:
                           channels=self.channels, jpeg_mode=self.jpeg_mode, max_value=self.max_value)
 
   def set_next_epoch(self):
-    
+
     self.loss_alpha = max(0, self.loss_alpha - self.loss_alpha_decay)
 
     self.batch_index = random.sample(range(0, self.train.input.count), self.train.input.count)

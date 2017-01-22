@@ -22,7 +22,7 @@ FLAGS = flags.FLAGS
 
 # Model
 flags.DEFINE_float("initial_lr", 0.001, "Initial learning rate")
-flags.DEFINE_float("lr_decay", 0.3, "Learning rate decay rate when it does not reduced during specific epoch")
+flags.DEFINE_float("lr_decay", 0.2, "Learning rate decay rate when it does not reduced during specific epoch")
 flags.DEFINE_integer("lr_decay_epoch", 5, "Decay learning rate when loss does not decrease")
 flags.DEFINE_float("beta1", 0.1, "Beta1 form adam optimizer")
 flags.DEFINE_float("beta2", 0.1, "Beta2 form adam optimizer")
@@ -36,7 +36,7 @@ flags.DEFINE_integer("stride_size", 21, "Stride size for mini-batch")
 flags.DEFINE_string("optimizer", "adam", "Optimizer: can be [gd, momentum, adadelta, adagrad, adam, rmsprop]")
 flags.DEFINE_float("loss_alpha", 0.5, "Initial loss-alpha value. Don't use intermediate outputs when 0.")
 flags.DEFINE_integer("loss_alpha_zero_epoch", 80, "Decrease loss-alpha to zero by this epoch")
-flags.DEFINE_float("loss_beta", 0.1, "Loss-beta for weight decay")
+flags.DEFINE_float("loss_beta", 0.0001, "Loss-beta for weight decay")
 flags.DEFINE_float("weight_dev", 0.01, "Initial weight stddev")
 flags.DEFINE_string("initializer", "diagonal", "Initializer: can be [uniform, stddev, diagonal, xavier]")
 
