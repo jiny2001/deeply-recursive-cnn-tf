@@ -69,6 +69,15 @@ And I got a less PSNR compared to their paper.
 |BSD100 x2|29.56|31.36|31.18|31.47|31.85|
 |Urban100 x2|26.88|29.50|29.54|29.31|30.75|
 
+I included learned weight data for default parameters. ( features 96, inference layers' depath 9, only for x2 scale )
+
+Now you can output up-converted images to evaluate just after downloaded. Run below and check [output] folder.
+
+```
+# evaluating for [set5, set14, bsd100, urban100, all] is available
+python main.py -—dataset set14 --is_training False
+```
+
 
 ## datasets
 
