@@ -48,6 +48,15 @@ python main.py -—dataset set14 --is_training False
 python main.py —scale 4
 ```
 
+```
+# build augmented (right-left and up-down flipped) training set on SCSR2 folder
+python augmentation.py
+
+# train with augmented training data (will have a little better PSNR)
+python main.py --training_set ScSR2
+```
+
+
 Network graphs and weights / loss summaries are saved in **tf_log** directory.
 
 Weights are saved in **model** directory.
@@ -69,7 +78,7 @@ And I got a less PSNR compared to their paper.
 |BSD100 x2|29.56|31.36|31.18|31.47|31.85|
 |Urban100 x2|26.88|29.50|29.54|29.31|30.75|
 
-I included learned weight data for default parameters. ( features 96, inference layers' depath 9, only for x2 scale )
+I included learned weight data for default parameters. ( features 96, inference layers' depth 9, only for x2 scale )
 
 Now you can output up-converted images to evaluate just after downloaded. Run below and check [output] folder.
 
