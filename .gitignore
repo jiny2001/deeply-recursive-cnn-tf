@@ -2,5 +2,4 @@
 **/.DS_Store
 output/
 cache/
-model/
 tf_log/
