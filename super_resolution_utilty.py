@@ -385,7 +385,7 @@ def weight(shape, stddev=0.01, name=None, uniform=False, initializer="xavier"):
 	elif initializer == "stddev":
 		initial = tf.truncated_normal(shape=shape, stddev=stddev)
 	elif initializer == "diagonal":
-		initial = he_initializer(shape)
+		initial = tf.truncated_normal(shape=shape, stddev=stddev)
 		if len(shape) == 4:
 			initial = initial.eval()
 			i = shape[0] // 2

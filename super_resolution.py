@@ -195,7 +195,6 @@ class SuperResolution:
       return
 
     self.W_conv = util.weight([self.cnn_size, self.cnn_size, self.feature_num, self.feature_num], stddev=self.weight_dev, name="W_conv", initializer="diagonal")
-   # self.W_conv = util.weight([self.cnn_size, self.cnn_size, self.feature_num, self.feature_num], name="W_conv")
     self.B_conv = util.bias([self.feature_num], name="B")
 
     for i in range(0, self.inference_depth):
