@@ -33,15 +33,15 @@ tensorflow, scipy, numpy and pillow
 ## how to use
 
 ```
-# train with default parameters and evaluate after training for Set5 (takes whole day to train with high-GPU)
+# train with default parameters and evaluate after training for Set5 (takes some hours to train with moderate-GPU)
 python main.py
 
 # training with simple model (will be good without GPU)
 python main.py —-end_lr 1e-4 —-feature_num 32 -—inference_depth 5
 
 # evaluation for set14 only (after training has done)
-# [set5, set14, bsd100, urban100, all] are available
-python main.py -—dataset set14 --is_training False
+# [set5, set14, bsd100, urban100, all] are available. Please specify same model parameter with training.
+python main.py -—dataset set14 --is_training False —-feature_num 32 -—inference_depth 5
 
 # train for x4 scale images
 # (you need to download image_SRF_4 dataset for Urban100 and BSD100)
