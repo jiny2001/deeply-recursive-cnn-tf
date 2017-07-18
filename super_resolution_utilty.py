@@ -9,17 +9,18 @@ Author: Jin Yamanaka
 """
 
 from __future__ import division
-import shutil
+
 import datetime
 import math
 import os
+import shutil
 from os import listdir
 from os.path import isfile, join
 
-import tensorflow as tf
 import numpy as np
-from scipy import misc
+import tensorflow as tf
 from PIL import Image
+from scipy import misc
 
 # utilities for save / load
 
@@ -50,8 +51,8 @@ def get_files_in_directory(path):
 def remove_generic(path, __func__):
 	try:
 		__func__(path)
-	except OSError, (error_no, error_str):
-		print("Error removing %s, %s" % (path, error_str))
+	except OSError as (error_no, error_str):
+		print("Error[%d] removing %s, %s" % (error_no, path, error_str))
 
 
 def clean_dir(path):
@@ -97,20 +98,16 @@ def save_image_data(filename, image):
 	misc.imsave(filename, image)
 
 
-def convert_rgb_to_y(image, jpeg_mode=True, max_value=255):
+def convert_rgb_to_y(image, jpeg_mode=True, max_value=255.0):
 	if len(image.shape) <= 2 or image.shape[2] == 1:
 		return image
 
-	y_image = np.zeros([image.shape[0], image.shape[1], 1])
 	if jpeg_mode:
-		for i in range(image.shape[0]):
-			for j in range(image.shape[1]):
-				y_image[i, j, 0] = 0.299 * image[i, j, 0] + 0.587 * image[i, j, 1] + 0.114 * image[i, j, 2]
+		xform = np.array([[0.299, 0.587, 0.114]])
+		y_image = image.dot(xform.T)
 	else:
-		for i in range(image.shape[0]):
-			for j in range(image.shape[1]):
-				y_image[i, j, 0] = (16.0 * max_value + 65.481 * image[i, j, 0] + 128.553 * image[i, j, 1] + 24.966 * image[
-					i, j, 2]) / 256.0
+		xform = np.array([[65.481 / 256.0, 128.553 / 256.0, 24.966 / 256.0]])
+		y_image = image.dot(xform.T) + (16.0 * max_value / 256.0)
 
 	return y_image
 
@@ -119,22 +116,17 @@ def convert_rgb_to_ycbcr(image, jpeg_mode=True, max_value=255):
 	if len(image.shape) < 2 or image.shape[2] == 1:
 		return image
 
-	ycbcr_image = np.zeros([image.shape[0], image.shape[1], image.shape[2]])
 	if jpeg_mode:
-		for i in range(image.shape[0]):
-			for j in range(image.shape[1]):
-				ycbcr_image[i, j, 0] = 0.299 * image[i, j, 0] + 0.587 * image[i, j, 1] + 0.114 * image[i, j, 2]
-				ycbcr_image[i, j, 1] = -0.169 * image[i, j, 0] - 0.331 * image[i, j, 1] + 0.500 * image[i, j, 2] + max_value / 2
-				ycbcr_image[i, j, 2] = 0.500 * image[i, j, 0] - 0.419 * image[i, j, 1] - 0.081 * image[i, j, 2] + max_value / 2
+		xform = np.array([[0.299, 0.587, 0.114], [-0.169, - 0.331, 0.500], [0.500, - 0.419, - 0.081]])
+		ycbcr_image = image.dot(xform.T)
+		ycbcr_image[:, :, [1, 2]] += max_value / 2
 	else:
-		for i in range(image.shape[0]):
-			for j in range(image.shape[1]):
-				ycbcr_image[i, j, 0] = (16.0 * max_value + 65.481 * image[i, j, 0] + 128.553 * image[i, j, 1] + 24.966 * image[
-					i, j, 2]) / 256.0
-				ycbcr_image[i, j, 1] = (128.0 * max_value - 37.945 * image[i, j, 0] - 74.494 * image[i, j, 1] + 112.439 * image[
-					i, j, 2]) / 256.0
-				ycbcr_image[i, j, 2] = (128.0 * max_value + 112.439 * image[i, j, 0] - 94.154 * image[i, j, 1] - 18.285 * image[
-					i, j, 2]) / 256.0
+		xform = np.array(
+			[[65.481 / 256.0, 128.553 / 256.0, 24.966 / 256.0], [- 37.945 / 256.0, - 74.494 / 256.0, 112.439 / 256.0],
+			 [112.439 / 256.0, - 94.154 / 256.0, - 18.285 / 256.0]])
+		ycbcr_image = image.dot(xform.T)
+		ycbcr_image[:, :, 0] += (16.0 * max_value / 256.0)
+		ycbcr_image[:, :, [1, 2]] += (128.0 * max_value / 256.0)
 
 	return ycbcr_image
 
@@ -154,25 +146,20 @@ def convert_y_and_cbcr_to_rgb(y_image, cbcr_image, jpeg_mode=True, max_value=255
 
 
 def convert_ycbcr_to_rgb(ycbcr_image, jpeg_mode=True, max_value=255.0):
-	rgb_image = np.zeros([ycbcr_image.shape[0], ycbcr_image.shape[1], 3])
-	center = max_value / 2
+	rgb_image = np.zeros([ycbcr_image.shape[0], ycbcr_image.shape[1], 3])  # type: np.ndarray
+
 	if jpeg_mode:
-		for i in range(ycbcr_image.shape[0]):
-			for j in range(ycbcr_image.shape[1]):
-				rgb_image[i, j, 0] = ycbcr_image[i, j, 0] + 1.402 * (ycbcr_image[i, j, 2] - center)
-				rgb_image[i, j, 1] = ycbcr_image[i, j, 0] - 0.344 * (ycbcr_image[i, j, 1] - center) - 0.714 * (
-					ycbcr_image[i, j, 2] - center)
-				rgb_image[i, j, 2] = ycbcr_image[i, j, 0] + 1.772 * (ycbcr_image[i, j, 1] - center)
+		rgb_image[:, :, [1, 2]] = ycbcr_image[:, :, [1, 2]] - (128.0 * max_value / 256.0)
+		xform = np.array([[1, 0, 1.402], [1, - 0.344, - 0.714], [1, 1.772, 0]])
+		rgb_image = rgb_image.dot(xform.T)
 	else:
-		for i in range(ycbcr_image.shape[0]):
-			for j in range(ycbcr_image.shape[1]):
-				y = ycbcr_image[i, j, 0] - 16 * max_value / 256
-				cb = ycbcr_image[i, j, 1] - center
-				cr = ycbcr_image[i, j, 2] - center
-				rgb_image[i, j, 0] = (y / 219.0 + 0.701 * cr / 112) * max_value
-				rgb_image[i, j, 1] = (y / 219.0 - 0.886 * 0.114 / (112 * 0.587) * cb - 0.701 * 0.299 / (
-				112 * 0.587) * cr) * max_value
-				rgb_image[i, j, 2] = (y / 219.0 + 0.886 / 112.0 * cb) * max_value
+		rgb_image[:, :, 0] = ycbcr_image[:, :, 0] - (16.0 * max_value / 256.0)
+		rgb_image[:, :, [1, 2]] = ycbcr_image[:, :, [1, 2]] - (128.0 * max_value / 256.0)
+		xform = np.array(
+			[[max_value / 219.0, 0, max_value * 0.701 / 112.0],
+			 [max_value / 219, - max_value * 0.886 * 0.114 / (112 * 0.587), - max_value * 0.701 * 0.299 / (112 * 0.587)],
+			 [max_value / 219.0, max_value * 0.886 / 112.0, 0]])
+		rgb_image = rgb_image.dot(xform.T)
 
 	return rgb_image
 
@@ -375,7 +362,6 @@ def he_initializer(shape, name=None):
 
 
 def weight(shape, stddev=0.01, name=None, uniform=False, initializer="xavier"):
-
 	if initializer == "xavier":
 		initial = xavier_cnn_initializer(shape, uniform=uniform, name=name)
 	elif initializer == "he":
@@ -399,7 +385,6 @@ def weight(shape, stddev=0.01, name=None, uniform=False, initializer="xavier"):
 
 
 def bias(shape, initial_value=0.0, name=None):
-
 	if name is None:
 		initial = tf.constant(initial_value, shape=shape)
 	else:
@@ -540,7 +525,7 @@ def print_num_of_total_parameters():
 		for dim in shape:
 			variable_parameters *= dim.value
 		total_parameters += variable_parameters
-		parameters_string += ("%s-%d, " % (str(shape),variable_parameters))
+		parameters_string += ("%s-%d, " % (str(shape), variable_parameters))
 
 	print(parameters_string)
 	print("Total %d variables, %s params" % (len(tf.trainable_variables()), "{:,}".format(total_parameters)))

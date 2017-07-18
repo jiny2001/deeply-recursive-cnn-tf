@@ -3,3 +3,5 @@
 output/
 cache/
 tf_log/
+
+\.idea/
