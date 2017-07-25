@@ -51,8 +51,8 @@ def get_files_in_directory(path):
 def remove_generic(path, __func__):
 	try:
 		__func__(path)
-	except OSError as (error_no, error_str):
-		print("Error[%d] removing %s, %s" % (error_no, path, error_str))
+	except OSError as error:
+		print("OS error: {0}".format(error))
 
 
 def clean_dir(path):
