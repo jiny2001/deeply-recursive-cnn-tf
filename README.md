@@ -64,8 +64,8 @@ Weights are saved in **model** directory.
 
 ## result of my implementation
 
-I use half num of features (128) to make training faster.
-And I got a less PSNR compared to their paper. 
+I use half num of features (128) to make training faster for those results below.
+(The results I got have a little less PSNR compared to their paper).
 
 ![alt tag](https://qiita-image-store.s3.amazonaws.com/0/145675/563c0d01-bc49-0843-7fbe-b13d4a39927a.png) 
 
