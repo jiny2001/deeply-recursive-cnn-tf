@@ -67,9 +67,9 @@ Weights are saved in **model** directory.
 I use half num of features (128) to make training faster for those results below.
 (The results I got have a little less PSNR compared to their paper).
 
-![alt tag](https://qiita-image-store.s3.amazonaws.com/0/145675/563c0d01-bc49-0843-7fbe-b13d4a39927a.png) 
+![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/img1.png)
 
-![alt tag](https://qiita-image-store.s3.amazonaws.com/0/145675/73c7538e-9171-7926-00ba-1c4835c675be.png)
+![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/img2.png)
 
 | DataSet | Bicubic | SRCN | SelfEx | My Result | DRCN |
 |:-------:|:-------:|:----:|:----:|:----:|:----:|
