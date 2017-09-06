@@ -50,7 +50,7 @@ flags.DEFINE_boolean("residual", False, "Using residual net")
 # Training or Others
 flags.DEFINE_boolean("is_training", True, "Train model with 91 standard images")
 flags.DEFINE_string("dataset", "set5", "Test dataset. [set5, set14, bsd100, urban100, all, test] are available")
-flags.DEFINE_string("training_set", "ScSR", "Training dataset. [ScSR, ScSR2] are available")
+flags.DEFINE_string("training_set", "ScSR", "Training dataset. [ScSR, Set5, Set14, Bsd100, Urban100] are available")
 flags.DEFINE_integer("evaluate_step", 20, "steps for evaluation")
 flags.DEFINE_integer("save_step", 2000, "steps for saving learned model")
 flags.DEFINE_float("end_lr", 1e-5, "Training end learning rate")
@@ -70,7 +70,7 @@ flags.DEFINE_boolean("summary", False, "Save weight and bias")
 
 
 def main(_):
-  
+
   print("Super Resolution (tensorflow version:%s)" % tf.__version__)
   print("%s\n" % util.get_now_date())
 

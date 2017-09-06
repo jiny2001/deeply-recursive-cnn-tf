@@ -27,8 +27,8 @@ from scipy import misc
 test_datasets = {
 	"set5": ["Set5", 0, 5],
 	"set14": ["Set14", 0, 14],
-	"bsd100": ["BSD100_SR", 0, 100],
-	"urban100": ["Urban100_SR", 0, 100],
+	"bsd100": ["BSD100", 0, 100],
+	"urban100": ["Urban100", 0, 100],
 	"test": ["Set5", 0, 1]
 }
 
@@ -202,7 +202,7 @@ def resize_image_by_pil_bicubic(image, scale):
 
 def load_image(filename, width=0, height=0, channels=0, alignment=0):
 	if not os.path.isfile(filename):
-		raise LoadError("File not found")
+		raise LoadError("File not found [%s]" % filename)
 	image = misc.imread(filename)
 
 	if len(image.shape) == 2:
@@ -486,11 +486,11 @@ def print_CNN_bias(tensor):
 
 
 def get_test_filenames(data_folder, dataset, scale):
-	test_folder = data_folder + "/" + test_datasets[dataset][0] + "/image_SRF_%d/" % scale
+	test_folder = data_folder + "/" + test_datasets[dataset][0] +"/"
 
 	test_filenames = []
 	for i in range(test_datasets[dataset][1], test_datasets[dataset][2]):
-		test_filenames.append(test_folder + "img_%03d_SRF_%d_HR.png" % (i + 1, scale))
+		test_filenames.append(test_folder + "img_%03d.png" % (i + 1))
 
 	return test_filenames
 
