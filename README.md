@@ -7,10 +7,10 @@ This project is a test implementation of ["Deeply-Recursive Convolutional Networ
 Paper: ["Deeply-Recursive Convolutional Network for Image Super-Resolution"] (https://arxiv.org/abs/1511.04491) by Jiwon Kim, Jung Kwon Lee and Kyoung Mu Lee Department of ECE, ASRI, Seoul National University, Korea
 
 
-Training highly deep CNN layers is so hard. However this paper makes it with some tricks like sharing filter weights and using intermediate outputs to suppress divergence in training. The model in the papaer contains 20 CNN layers without no any max-pooling layers, I feel it's amazing.
+Training highly deep CNN layers is so hard. However this paper makes it with some tricks like sharing filter weights and using intermediate outputs to suppress divergence in training. The model in the paper contains 20 CNN layers without no any max-pooling layers, I feel it's amazing.
 
-Also the paper’s super-resolution results are so nice. :)
 
+&#x1F534; I also build another SR model. It is faster and has better PSNR results. Please try this project also. [https://github.com/jiny2001/dcscn-super-resolution](https://github.com/jiny2001/dcscn-super-resolution) &#x1F534;
 
 ## model structure
 
@@ -44,7 +44,6 @@ python main.py —-end_lr 1e-4 —-feature_num 32 -—inference_depth 5
 python main.py -—dataset set14 --is_training False —-feature_num 32 -—inference_depth 5
 
 # train for x4 scale images
-# (you need to download image_SRF_4 dataset for Urban100 and BSD100)
 python main.py —scale 4
 ```
 
@@ -54,6 +53,9 @@ python augmentation.py
 
 # train with augmented training data (will have a little better PSNR)
 python main.py --training_set ScSR2
+
+# train with your own training data (create directory under "data" and put your data files into it)
+python main.py --training_set your_data_directory_name
 ```
 
 
@@ -64,12 +66,9 @@ Weights are saved in **model** directory.
 
 ## result of my implementation
 
-I use half num of features (128) to make training faster for those results below.
-(The results I got have a little less PSNR compared to their paper).
+I use half num of features (128) to make training faster for those results below. Please check with original (100%) image size. (The results I got have a little less PSNR compared to their paper).
 
-![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/img1.png)
-
-![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/img2.png)
+![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/comp.png)
 
 | DataSet | Bicubic | SRCN | SelfEx | My Result | DRCN |
 |:-------:|:-------:|:----:|:----:|:----:|:----:|
@@ -87,6 +86,17 @@ Now you can output up-converted images to evaluate just after downloaded. Run be
 python main.py -—dataset set14 --is_training False
 ```
 
+## apply to your own image
+
+Put your image file under my project directory and then try those commands below.
+Please note if you trained with your own prameters like "python3 main.py --inference_depth 5 --feature_num 64", you should use same parameters for test.py.
+
+```
+python test.py --file your_image_filename
+
+#try with your trained model
+python test.py --file your_image_filename --same_args_which_you_used_on_your_training blabla
+```
 
 ## datasets
 
