@@ -89,7 +89,7 @@ python main.py -—dataset set14 --is_training False
 ## apply to your own image
 
 Put your image file under my project directory and then try those commands below.
-Please note if you trained with your own prameters like "python3 main.py --inference_depth 5 --feature_num 64", you should use same parameters for test.py.
+Please note if you trained with your own parameters like "python3 main.py --inference_depth 5 --feature_num 64", you should use same parameters for test.py.
 
 ```
 python test.py --file your_image_filename
