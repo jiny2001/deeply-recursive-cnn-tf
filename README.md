@@ -100,7 +100,7 @@ python test.py --file your_image_filename --same_args_which_you_used_on_your_tra
 
 ## datasets
 
-Some images are already set in **data** folder yet some x3 and x4 images are not contained because of their data sizes.
+Some popular dataset images are already set in **data** folder.
 
 for training:
 + ScSR [[ Yang et al. TIP 2010 ]](http://www.ifp.illinois.edu/%7Ejyang29/ScSR.htm)
@@ -115,7 +115,7 @@ for evaluation:
 
 ## disclaimer
 
-Some details are not shown in the paper and my guesses maybe not enough. My code's PSNR are about 0.5-1.0 lesser than paper's experiments.
+Some details are not shown in the paper and my guesses maybe not enough. My code's PSNR are about 0.5-1.0 lesser than paper's experiments results.
 
 ## acknowledgments
 
