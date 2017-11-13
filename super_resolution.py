@@ -166,17 +166,19 @@ class SuperResolution:
 		self.y = tf.placeholder(tf.float32, shape=[None, None, None, self.channels], name="Y")
 
 		# H-1 conv
-		self.Wm1_conv = util.weight([self.cnn_size, self.cnn_size, self.channels, self.feature_num],
-		                            stddev=self.weight_dev, name="W-1_conv", initializer=self.initializer)
-		self.Bm1_conv = util.bias([self.feature_num], name="B-1")
-		Hm1_conv = util.conv2d_with_bias(self.x, self.Wm1_conv, self.cnn_stride, self.Bm1_conv, add_relu=True, name="H-1")
+		with tf.variable_scope("W-1_conv"):
+			self.Wm1_conv = util.weight([self.cnn_size, self.cnn_size, self.channels, self.feature_num],
+			                            stddev=self.weight_dev, name="conv_W", initializer=self.initializer)
+			self.Bm1_conv = util.bias([self.feature_num], name="conv_B")
+			Hm1_conv = util.conv2d_with_bias(self.x, self.Wm1_conv, self.cnn_stride, self.Bm1_conv, add_relu=True, name="H")
 
 		# H0 conv
-		self.W0_conv = util.weight([self.cnn_size, self.cnn_size, self.feature_num, self.feature_num],
-		                           stddev=self.weight_dev, name="W0_conv", initializer=self.initializer)
-		self.B0_conv = util.bias([self.feature_num], name="B0")
-		self.H_conv[0] = util.conv2d_with_bias(Hm1_conv, self.W0_conv, self.cnn_stride, self.B0_conv, add_relu=True,
-		                                       name="H0")
+		with tf.variable_scope("W0_conv"):
+			self.W0_conv = util.weight([self.cnn_size, self.cnn_size, self.feature_num, self.feature_num],
+		                           stddev=self.weight_dev, name="conv_W", initializer=self.initializer)
+			self.B0_conv = util.bias([self.feature_num], name="conv_B")
+			self.H_conv[0] = util.conv2d_with_bias(Hm1_conv, self.W0_conv, self.cnn_stride, self.B0_conv, add_relu=True,
+		                                       name="H")
 
 		if self.summary:
 			# convert to tf.summary.image format [batch_num, height, width, channels]
@@ -198,8 +200,9 @@ class SuperResolution:
 		self.B_conv = util.bias([self.feature_num], name="B")
 
 		for i in range(0, self.inference_depth):
-			self.H_conv[i + 1] = util.conv2d_with_bias(self.H_conv[i], self.W_conv, 1, self.B_conv, add_relu=True,
-			                                           name="H%d" % (i + 1))
+			with tf.variable_scope("W%d_conv" % (i+1)):
+				self.H_conv[i + 1] = util.conv2d_with_bias(self.H_conv[i], self.W_conv, 1, self.B_conv, add_relu=True,
+			                                           name="H%d" % i)
 
 		if self.summary:
 			util.add_summaries("W", self.model_name, self.W_conv, mean=True, max=True, min=True)
@@ -217,24 +220,24 @@ class SuperResolution:
 		                            stddev=self.weight_dev, name="WD2_conv", initializer=self.initializer)
 		self.BD2_conv = util.bias([1], name="BD2")
 
-		self.Y1_conv = (self.inference_depth + 1) * [None]
-		self.Y2_conv = (self.inference_depth + 1) * [None]
+		self.Y1_conv = (self.inference_depth) * [None]
+		self.Y2_conv = (self.inference_depth) * [None]
 		self.W = tf.Variable(
-			np.full(fill_value=1.0 / (self.inference_depth + 1), shape=[self.inference_depth + 1], dtype=np.float32),
-			name="layer_weight")
+			np.full(fill_value=1.0 / self.inference_depth, shape=[self.inference_depth], dtype=np.float32),
+		name="LayerWeights")
 		W_sum = tf.reduce_sum(self.W)
 
-		for i in range(0, self.inference_depth + 1):
-			self.Y1_conv[i] = util.conv2d_with_bias(self.H_conv[i], self.WD1_conv, self.cnn_stride, self.BD1_conv,
-			                                        add_relu=not self.residual, name="Y%d_1" % i)
-			self.Y2_conv[i] = util.conv2d_with_bias(self.Y1_conv[i], self.WD2_conv, self.cnn_stride, self.BD2_conv,
-			                                        add_relu=not self.residual, name="Y%d_2" % i)
-			y_ = tf.multiply(self.W[i], self.Y2_conv[i], name="Y%d_mul" % i)
-			y_ = tf.div(y_, W_sum, name="Y%d_div" % i)
-			if i == 0:
-				self.y_ = y_
-			else:
-				self.y_ = self.y_ + y_
+		y_ = self.inference_depth * [None]
+
+		for i in range(0, self.inference_depth):
+			with tf.variable_scope("Y%d" % (i+1)):
+				self.Y1_conv[i] = util.conv2d_with_bias(self.H_conv[i+1], self.WD1_conv, self.cnn_stride, self.BD1_conv,
+				                                        add_relu=not self.residual, name="conv_1")
+				self.Y2_conv[i] = util.conv2d_with_bias(self.Y1_conv[i], self.WD2_conv, self.cnn_stride, self.BD2_conv,
+				                                        add_relu=not self.residual, name="conv_2")
+				y_[i] = self.Y2_conv[i] * self.W[i] / W_sum
+
+		self.y_ = tf.add_n(y_)
 
 		if self.residual:
 			self.y_ = self.y_ + self.x
@@ -249,7 +252,9 @@ class SuperResolution:
 		self.lr_input = tf.placeholder(tf.float32, shape=[], name="LearningRate")
 		self.loss_alpha_input = tf.placeholder(tf.float32, shape=[], name="Alpha")
 
-		mse = tf.reduce_mean(tf.square(self.y_ - self.y), name="loss1")
+		with tf.variable_scope("Loss"):
+			mse = tf.reduce_mean(tf.square(self.y_ - self.y), name="MSE")
+
 		if self.debug:
 			mse = tf.Print(mse, [mse], message="MSE: ")
 
@@ -258,42 +263,39 @@ class SuperResolution:
 		if self.loss_alpha == 0.0 or self.inference_depth == 0:
 			loss = mse
 		else:
-			loss1_mse = self.inference_depth * [None]
+
+			# we define 'Alpha Loss' as the MSE of internal H1 to Hn
+			alpha_mses = (self.inference_depth) * [None]
 
 			for i in range(0, self.inference_depth):
-				if self.residual:
-					self.Y2_conv[i] = self.Y2_conv[i] + self.x
-				inference_sub = tf.subtract(self.y, self.Y2_conv[i], name="Loss1_%d_sub" % i)
-				inference_square = tf.square(inference_sub, name="Loss1_%d_squ" % i)
-				loss1_mse[i] = tf.reduce_mean(inference_square, name="Loss1_%d" % i)
+				with tf.variable_scope("Alpha_Loss%d" % (i+1)):
+					if self.residual:
+						self.Y2_conv[i] = self.Y2_conv[i] + self.x
+					inference_square = tf.square(tf.subtract(self.y, self.Y2_conv[i]))
+					alpha_mses[i] = tf.reduce_mean(inference_square)
 
-			loss1 = loss1_mse[0]
-			for i in range(1, self.inference_depth):
-				if i == self.inference_depth:
-					loss1 = tf.add(loss1, loss1_mse[i], name="loss1")
-				else:
-					loss1 = tf.add(loss1, loss1_mse[i], name="loss1_%d_add" % i)
+			with tf.variable_scope("Alpha_Losses"):
+				alpha_loss = tf.add_n(alpha_mses)
+				alpha_loss = tf.multiply(1.0 / self.inference_depth, alpha_loss, name="loss1_weight")
+				alpha_loss2 = tf.multiply(self.loss_alpha_input, alpha_loss, name="loss1_alpha")
 
-			loss1 = tf.multiply(1.0 / self.inference_depth, loss1, name="loss1_weight")
-			loss2 = mse
 			if self.visualize:
-				tf.summary.scalar("loss1/" + self.model_name, loss1)
-				tf.summary.scalar("loss2/" + self.model_name, loss2)
-			loss1 = tf.multiply(self.loss_alpha_input, loss1, name="loss1_alpha")
-			loss2 = tf.multiply(1 - self.loss_alpha_input, loss2, name="loss2_alpha")
+				tf.summary.scalar("loss_alpha/" + self.model_name, alpha_loss)
+				tf.summary.scalar("loss_mse/" + self.model_name, mse)
+
+			mse2 = tf.multiply(1 - self.loss_alpha_input, mse, name="loss_mse_alpha")
+			loss = mse2 + alpha_loss2
 
 			if self.loss_beta > 0.0:
-				loss3 = tf.nn.l2_loss(self.Wm1_conv) + tf.nn.l2_loss(self.W0_conv) \
-				        + tf.nn.l2_loss(self.W_conv) + tf.nn.l2_loss(self.WD1_conv) \
-				        + tf.nn.l2_loss(self.WD2_conv)
-				loss3 *= self.loss_beta
+				with tf.variable_scope("L2_norms"):
+					L2_norm = tf.nn.l2_loss(self.Wm1_conv) + tf.nn.l2_loss(self.W0_conv) \
+					        + tf.nn.l2_loss(self.W_conv) + tf.nn.l2_loss(self.WD1_conv) \
+					        + tf.nn.l2_loss(self.WD2_conv)
+					L2_norm *= self.loss_beta
+				loss += L2_norm
 
 				if self.visualize:
-					tf.summary.scalar("loss3/" + self.model_name, loss3)
-
-				loss = loss1 + loss2 + loss3
-			else:
-				loss = loss1 + loss2
+					tf.summary.scalar("loss_L2_norm/" + self.model_name, L2_norm)
 
 		if self.visualize:
 			tf.summary.scalar("test_loss/" + self.model_name, loss)
@@ -306,10 +308,11 @@ class SuperResolution:
 
 	def get_psnr_tensor(self, mse):
 
-		value = tf.constant(self.max_value, dtype=mse.dtype) / tf.sqrt(mse)
-		numerator = tf.log(value)
-		denominator = tf.log(tf.constant(10, dtype=mse.dtype))
-		return tf.constant(20, dtype=mse.dtype) * numerator / denominator
+		with tf.variable_scope("get_PSNR"):
+			value = tf.constant(self.max_value, dtype=mse.dtype) / tf.sqrt(mse)
+			numerator = tf.log(value)
+			denominator = tf.log(tf.constant(10, dtype=mse.dtype))
+			return tf.constant(20, dtype=mse.dtype) * numerator / denominator
 
 	def add_optimizer_op(self, loss, lr_input):
 

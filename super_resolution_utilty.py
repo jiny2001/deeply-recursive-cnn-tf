@@ -385,11 +385,12 @@ def weight(shape, stddev=0.01, name=None, uniform=False, initializer="xavier"):
 
 
 def bias(shape, initial_value=0.0, name=None):
+	initial = tf.constant(initial_value, shape=shape)
+
 	if name is None:
-		initial = tf.constant(initial_value, shape=shape)
+		return tf.Variable(initial)
 	else:
-		initial = tf.constant(initial_value, shape=shape, name=name)
-	return tf.Variable(initial)
+		return tf.Variable(initial, name=name)
 
 
 # utilities for logging -----
