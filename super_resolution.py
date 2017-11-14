@@ -211,12 +211,12 @@ class SuperResolution:
 	def build_reconstruction_graph(self):
 
 		# HD+1 conv
-		self.WD1_conv = util.weight([self.cnn_size, self.cnn_size, self.feature_num + 1, self.feature_num],
+		self.WD1_conv = util.weight([self.cnn_size, self.cnn_size, self.feature_num, self.feature_num],
 		                            stddev=self.weight_dev, name="WD1_conv", initializer=self.initializer)
 		self.BD1_conv = util.bias([self.feature_num], name="BD1")
 
 		# HD+2 conv
-		self.WD2_conv = util.weight([self.cnn_size, self.cnn_size, self.feature_num, self.channels],
+		self.WD2_conv = util.weight([self.cnn_size, self.cnn_size, self.feature_num+1, self.channels],
 		                            stddev=self.weight_dev, name="WD2_conv", initializer=self.initializer)
 		self.BD2_conv = util.bias([1], name="BD2")
 
@@ -231,10 +231,10 @@ class SuperResolution:
 
 		for i in range(0, self.inference_depth):
 			with tf.variable_scope("Y%d" % (i+1)):
-				y_conv = tf.concat([self.H_conv[i+1], self.x], 3)
-				self.Y1_conv[i] = util.conv2d_with_bias(y_conv, self.WD1_conv, self.cnn_stride, self.BD1_conv,
+				self.Y1_conv[i] = util.conv2d_with_bias(self.H_conv[i+1], self.WD1_conv, self.cnn_stride, self.BD1_conv,
 				                                        add_relu=not self.residual, name="conv_1")
-				self.Y2_conv[i] = util.conv2d_with_bias(self.Y1_conv[i], self.WD2_conv, self.cnn_stride, self.BD2_conv,
+				y_conv = tf.concat([self.Y1_conv[i], self.x], 3)
+				self.Y2_conv[i] = util.conv2d_with_bias(y_conv, self.WD2_conv, self.cnn_stride, self.BD2_conv,
 				                                        add_relu=not self.residual, name="conv_2")
 				self.y_outputs[i] = self.Y2_conv[i] * self.W[i] / W_sum
 
