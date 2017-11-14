@@ -211,7 +211,7 @@ class SuperResolution:
 	def build_reconstruction_graph(self):
 
 		# HD+1 conv
-		self.WD1_conv = util.weight([self.cnn_size, self.cnn_size, self.feature_num, self.feature_num],
+		self.WD1_conv = util.weight([self.cnn_size, self.cnn_size, self.feature_num + 1, self.feature_num],
 		                            stddev=self.weight_dev, name="WD1_conv", initializer=self.initializer)
 		self.BD1_conv = util.bias([self.feature_num], name="BD1")
 
@@ -227,20 +227,16 @@ class SuperResolution:
 		name="LayerWeights")
 		W_sum = tf.reduce_sum(self.W)
 
-		y_ = self.inference_depth * [None]
+		self.y_outputs = self.inference_depth * [None]
 
 		for i in range(0, self.inference_depth):
 			with tf.variable_scope("Y%d" % (i+1)):
-				self.Y1_conv[i] = util.conv2d_with_bias(self.H_conv[i+1], self.WD1_conv, self.cnn_stride, self.BD1_conv,
+				y_conv = tf.concat([self.H_conv[i+1], self.x], 3)
+				self.Y1_conv[i] = util.conv2d_with_bias(y_conv, self.WD1_conv, self.cnn_stride, self.BD1_conv,
 				                                        add_relu=not self.residual, name="conv_1")
 				self.Y2_conv[i] = util.conv2d_with_bias(self.Y1_conv[i], self.WD2_conv, self.cnn_stride, self.BD2_conv,
 				                                        add_relu=not self.residual, name="conv_2")
-				y_[i] = self.Y2_conv[i] * self.W[i] / W_sum
-
-		self.y_ = tf.add_n(y_)
-
-		if self.residual:
-			self.y_ = self.y_ + self.x
+				self.y_outputs[i] = self.Y2_conv[i] * self.W[i] / W_sum
 
 		if self.summary:
 			util.add_summaries("BD1", self.model_name, self.BD1_conv)
@@ -253,6 +249,11 @@ class SuperResolution:
 		self.loss_alpha_input = tf.placeholder(tf.float32, shape=[], name="Alpha")
 
 		with tf.variable_scope("Loss"):
+
+			self.y_ = tf.add_n(self.y_outputs)
+			if self.residual:
+				self.y_ = self.y_ + self.x
+
 			mse = tf.reduce_mean(tf.square(self.y_ - self.y), name="MSE")
 
 		if self.debug:
@@ -267,21 +268,21 @@ class SuperResolution:
 			# we define 'Alpha Loss' as the MSE of internal H1 to Hn
 			alpha_mses = (self.inference_depth) * [None]
 
-			for i in range(0, self.inference_depth):
-				with tf.variable_scope("Alpha_Loss%d" % (i+1)):
-					if self.residual:
-						self.Y2_conv[i] = self.Y2_conv[i] + self.x
-					inference_square = tf.square(tf.subtract(self.y, self.Y2_conv[i]))
-					alpha_mses[i] = tf.reduce_mean(inference_square)
-
 			with tf.variable_scope("Alpha_Losses"):
+				for i in range(0, self.inference_depth):
+					with tf.variable_scope("Alpha_Loss%d" % (i+1)):
+						if self.residual:
+							self.Y2_conv[i] = self.Y2_conv[i] + self.x
+						inference_square = tf.square(tf.subtract(self.y, self.Y2_conv[i]))
+						alpha_mses[i] = tf.reduce_mean(inference_square)
+
 				alpha_loss = tf.add_n(alpha_mses)
 				alpha_loss = tf.multiply(1.0 / self.inference_depth, alpha_loss, name="loss1_weight")
 				alpha_loss2 = tf.multiply(self.loss_alpha_input, alpha_loss, name="loss1_alpha")
 
-			if self.visualize:
-				tf.summary.scalar("loss_alpha/" + self.model_name, alpha_loss)
-				tf.summary.scalar("loss_mse/" + self.model_name, mse)
+				if self.visualize:
+					tf.summary.scalar("loss_alpha/" + self.model_name, alpha_loss)
+					tf.summary.scalar("loss_mse/" + self.model_name, mse)
 
 			mse2 = tf.multiply(1 - self.loss_alpha_input, mse, name="loss_mse_alpha")
 			loss = mse2 + alpha_loss2
