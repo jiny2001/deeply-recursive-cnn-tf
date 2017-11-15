@@ -72,13 +72,13 @@ I use half num of features (128) to make training faster for those results below
 
 | DataSet | Bicubic | SRCN | SelfEx | My Result | DRCN |
 |:-------:|:-------:|:----:|:----:|:----:|:----:|
-|Set5 x2|33.66|36.66|36.49|37.24|37.63|
-|Set14 x2|30.24|32.42|32.22|32.77|33.04|
-|BSD100 x2|29.56|31.36|31.18|31.64|31.85|
-|Urban100 x2|26.88|29.50|29.54|29.78|30.75|
+|Set5 x2|33.66|36.66|36.49|37.37|37.63|
+|Set14 x2|30.24|32.42|32.22|32.88|33.04|
+|BSD100 x2|29.56|31.36|31.18|31.73|31.85|
+|Urban100 x2|26.88|29.50|29.54|30.03|30.75|
 
 I include learned weights for default parameters.
-default ( features:96, inference layers depth:9) with larger dataset (ynag91+general100)x4 augmented.
+default (features:96, inference layers depth:9) with larger dataset (ynag91+general100)x4 augmented.
 
 You can output up-converted images to evaluate. Run below and check [output] folder.
 
