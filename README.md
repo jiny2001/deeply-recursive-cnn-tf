@@ -23,7 +23,7 @@ Those figures are from the paper. There are 3 different networks which cooperate
 This model below is made by my code and drawn by tensorboard.
 
 ![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/model.png)
-![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/network_gaph2.png)
+![alt tag](https://raw.githubusercontent.com/jiny2001/deeply-recursive-cnn-tf/master/documents/network_graph2.png)
 
 
 ## requirements
